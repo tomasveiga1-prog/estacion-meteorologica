@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Estación Meteorológica — Don Torcuato</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #181c22;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent: #4fc3f7;
+    --accent2: #81d4fa;
+    --warm: #ffb74d;
+    --cool: #80cbc4;
+    --green: #a5d6a7;
+    --red: #ef9a9a;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+    --r: 12px;
+    --rs: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(79,195,247,0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,195,247,0.012) 1px, transparent 1px);
+    background-size: 36px 36px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout raíz ── */
+  .app {
+    position: relative; z-index: 1;
+    width: 100%; height: 100vh;
+    display: grid;
+    /* col izquierda | col centro | col derecha */
+    grid-template-columns: 260px 1fr 220px;
+    grid-template-rows: auto 1fr auto;
+    gap: 0;
+    padding: 14px 14px 10px;
+    column-gap: 12px;
+  }
+
+  /* ── Header full-width ── */
+  .header {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .loc-name {
+    font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: var(--accent); border-radius: 50%;
+    box-shadow: 0 0 7px var(--accent);
+    animation: blink 2.5s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.4;transform:scale(.75)}
+  }
+  .loc-sub {
+    font-family: var(--mono);
+    font-size: 10px; color: var(--muted);
+    letter-spacing: .12em; text-transform: uppercase;
+    margin-left: 13px;
+  }
+  .header-center {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--muted);
+    text-align: center; letter-spacing: .05em;
+  }
+  .header-center strong { color: var(--accent); font-weight: 400; }
+  .header-right {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .upd-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: right; }
+  .upd-time  { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+
+  /* countdown ring */
+  .cd-wrap { position: relative; width: 36px; height: 36px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .cd-svg { transform: rotate(-90deg); }
+  .cd-track { stroke: var(--border2); }
+  .cd-fill  { stroke: var(--accent); stroke-dasharray: 88; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+  .cd-num   { position:absolute; font-family:var(--mono); font-size:9px; color:var(--muted); }
+
+  /* ── COLUMNA IZQUIERDA ── */
+  .col-left {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Hero temperatura */
+  .hero {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 10px 14px;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .hero::after {
+    content:'';
+    position:absolute; top:-30px; right:-30px;
+    width:120px; height:120px;
+    background: radial-gradient(circle, rgba(79,195,247,.07) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .hero-icon-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  .hero-icon { font-size: 36px; line-height:1; }
+  .hero-range { font-family: var(--mono); font-size: 12px; text-align:right; }
+  .hero-range .hi { color: var(--warm); }
+  .hero-range .lo { color: var(--cool); }
+  .hero-temp {
+    font-family: var(--mono); font-size: 48px; font-weight: 300;
+    line-height: 1; letter-spacing: -2px; color: var(--text);
+  }
+  .hero-temp sup { font-size: 22px; color: var(--muted); font-weight:300; vertical-align:top; margin-top:8px; }
+  .hero-desc { font-size: 14px; font-weight: 600; color: var(--text); margin-top: 4px; }
+  .hero-feels { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top:2px; }
+  .hero-feels span { color: var(--accent2); }
+
+  /* Precipitación + nubes */
+  .pill-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+    padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .pill {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 3px 7px;
+    white-space: nowrap;
+  }
+  .pill strong { color: var(--text); font-weight: 400; }
+
+  /* Métricas pequeñas (humedad, presión, uv, rocío) */
+  .mini-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    flex: 1;
+  }
+  .mini {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--rs); padding: 10px 12px;
+  }
+  .mini-lbl { font-family: var(--mono); font-size: 9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .mini-val { font-family: var(--mono); font-size: 20px; color: var(--text); line-height:1; }
+  .mini-val .u { font-size: 11px; color: var(--muted); }
+  .mini-sub { font-size: 10px; color: var(--muted); margin-top:3px; }
+  .mini-bar { height:2px; background:var(--border2); border-radius:1px; margin-top:6px; overflow:hidden; }
+  .mini-bar-fill { height:100%; border-radius:1px; transition: width .7s ease; }
+
+  /* ── COLUMNA CENTRO ── */
+  .col-center {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Viento */
+  .wind-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 14px 16px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .compass {
+    width: 80px; height: 80px; flex-shrink: 0;
+    border: 1px solid var(--border2); border-radius: 50%;
+    position: relative; display:flex; align-items:center; justify-content:center;
+  }
+  /* puntos cardinales */
+  .compass-n,.compass-s,.compass-e,.compass-o {
+    position:absolute; font-family:var(--mono); font-size:9px; color:var(--muted);
+  }
+  .compass-n { top:3px; left:50%; transform:translateX(-50%); color:var(--accent); }
+  .compass-s { bottom:3px; left:50%; transform:translateX(-50%); }
+  .compass-e { right:4px; top:50%; transform:translateY(-50%); }
+  .compass-o { left:4px;  top:50%; transform:translateY(-50%); }
+  .wind-arrow {
+    width: 2px; height: 28px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    border-radius: 1px;
+    transform-origin: bottom center;
+    position: absolute; bottom: 50%; left: calc(50% - 1px);
+    transition: transform .7s ease;
+  }
+  .compass-dot { width:5px;height:5px;background:var(--accent);border-radius:50%;position:absolute; }
+
+  .wind-data { flex: 1; }
+  .wind-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .wind-big { font-family:var(--mono); font-size:38px; font-weight:300; color:var(--text); line-height:1; }
+  .wind-big .u { font-size:14px; color:var(--muted); }
+  .wind-sub { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:3px; }
+  .wind-sub span { color:var(--accent2); }
+  .dir-badge {
+    display:inline-block; margin-top:6px;
+    font-family:var(--mono); font-size:10px;
+    background:rgba(79,195,247,.1); color:var(--accent);
+    border:1px solid rgba(79,195,247,.2); border-radius:4px;
+    padding:2px 8px;
+  }
+
+  /* Sol + barra */
+  .sun-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 14px 16px;
+    flex-shrink: 0;
+  }
+  .col-center .hero { flex-shrink: 0; }
+  .sun-card-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .sun-times { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .sun-item { flex:1; text-align:center; }
+  .sun-emoji { font-size:20px; display:block; margin-bottom:3px; }
+  .sun-time { font-family:var(--mono); font-size:16px; color:var(--text); }
+  .sun-sublbl { font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:1px; }
+  .sun-div { width:1px; height:36px; background:var(--border2); }
+  .sun-bar { height:5px; background:var(--border2); border-radius:3px; overflow:hidden; }
+  .sun-fill { height:100%; background:linear-gradient(to right, var(--warm), #fff176); border-radius:3px; transition:width .6s ease; }
+  .sun-ticks { display:flex; justify-content:space-between; margin-top:4px; font-family:var(--mono); font-size:9px; color:var(--muted); }
+
+  /* ── NOTICIAS ── */
+  .news-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 0;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+  }
+  .news-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; padding-bottom: 7px;
+    border-bottom: 1px solid var(--border);
+  }
+  .news-lbl {
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .news-live-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--red); box-shadow: 0 0 5px var(--red);
+    animation: blink 2s ease-in-out infinite;
+  }
+  .news-timer {
+    font-family: var(--mono); font-size: 9px; color: var(--muted);
+  }
+  .news-timer span { color: var(--accent); }
+  .news-list { display: flex; flex-direction: column; gap: 0; flex: 1; overflow: hidden; }
+  .news-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 8px; margin: 0 -8px;
+    border-bottom: 1px solid var(--border);
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .news-item:last-child { border-bottom: none; }
+  .news-item:hover, .news-item:active { background: var(--surface2); }
+  .news-source {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--accent); white-space: nowrap;
+    min-width: 72px; letter-spacing: .03em; font-weight: 500;
+  }
+  .news-title {
+    font-size: 12px; color: var(--text); line-height: 1.3; flex: 1;
+  }
+  .news-arrow { font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .news-loading {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted); text-align: center; padding: 12px 0;
+  }
+  .news-error {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--red); text-align: center; padding: 8px 0;
+  }
+
+  /* ── COLUMNA DERECHA ── */
+  .col-right {
+    grid-column: 3;
+    grid-row: 2;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  .right-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--rs); padding: 12px 14px;
+    flex: 1; display:flex; flex-direction:column; justify-content:center;
+  }
+  .right-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .right-val { font-family:var(--mono); font-size:26px; color:var(--text); line-height:1; }
+  .right-val .u { font-size:12px; color:var(--muted); }
+  .right-sub { font-size:10px; color:var(--muted); margin-top:4px; }
+
+  /* ── FOOTER ── */
+  .footer {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .footer-left { font-family:var(--mono); font-size:10px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .wl-dot { width:5px;height:5px;border-radius:50%;background:var(--muted);flex-shrink:0; }
+  .wl-dot.on { background:var(--green); box-shadow:0 0 5px var(--green); }
+  .btn-refresh {
+    font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--accent); background:var(--surface2);
+    border:1px solid rgba(79,195,247,.25); border-radius:var(--rs);
+    padding:6px 14px; cursor:pointer; transition:background .2s;
+  }
+  .btn-refresh:active { background:rgba(79,195,247,.12); }
+  .footer-right { font-family:var(--mono); font-size:10px; color:var(--muted); text-align:right; }
+  .footer-right strong { color:var(--accent); font-weight:400; }
+
+  /* Estado carga/error */
+  .state-msg {
+    grid-column:1/-1; grid-row:2;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:10px; color:var(--muted); font-family:var(--mono); font-size:13px;
+  }
+  .state-msg .big { font-size:32px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="loc-name">
+        <span class="live-dot"></span>
+        Don Torcuato, Buenos Aires
+      </div>
+      <div class="loc-sub">Estación meteorológica · Open-Meteo API</div>
+    </div>
+    <div class="header-center">
+      API open-meteo.com &nbsp;|&nbsp; lat -34.4966 / lon -58.6069<br>
+      <strong id="update-time">—</strong>
+    </div>
+    <div class="header-right">
+      <div class="upd-label">Próxima actualización<br><span id="next-lbl">—</span></div>
+      <div class="cd-wrap">
+        <svg class="cd-svg" width="36" height="36">
+          <circle class="cd-track" cx="18" cy="18" r="14" fill="none" stroke-width="2"/>
+          <circle class="cd-fill" id="cd-ring" cx="18" cy="18" r="14" fill="none" stroke-width="2"/>
+        </svg>
+        <span class="cd-num" id="cd-num">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENIDO: se inyecta con JS -->
+  <div class="state-msg" id="state-msg">
+    <div class="big">🌤️</div>
+    Cargando datos meteorológicos...
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-left">
+      <span class="wl-dot" id="wl-dot"></span>
+      <span id="wl-lbl">Pantalla libre</span>
+    </div>
+    <button class="btn-refresh" onclick="loadWeather()">↻ Actualizar ahora</button>
+    <div class="footer-right">Auto-refresh cada 10 min</div>
+  </div>
+
+</div>
+
+<script>
+const LAT = -34.4966, LON = -58.6069;
+const REFRESH = 600;
+let countdown = REFRESH, cdInterval = null, wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      document.getElementById('wl-dot').classList.add('on');
+      document.getElementById('wl-lbl').textContent = 'Pantalla bloqueada activa';
+      wakeLock.addEventListener('release', () => {
+        document.getElementById('wl-dot').classList.remove('on');
+        document.getElementById('wl-lbl').textContent = 'Pantalla libre';
+      });
+    }
+  } catch(e){}
+}
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+
+function windDirLabel(deg) {
+  return ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'][Math.round(deg/22.5)%16];
+}
+function weatherDesc(c) {
+  return ({0:'Cielo despejado',1:'Mayormente despejado',2:'Parcialmente nublado',3:'Nublado',
+    45:'Niebla',48:'Niebla c/ escarcha',51:'Llovizna leve',53:'Llovizna moderada',55:'Llovizna intensa',
+    61:'Lluvia leve',63:'Lluvia moderada',65:'Lluvia intensa',71:'Nieve leve',73:'Nieve moderada',75:'Nieve intensa',
+    80:'Chaparrones leves',81:'Chaparrones moderados',82:'Chaparrones fuertes',
+    95:'Tormenta eléctrica',96:'Tormenta c/ granizo',99:'Tormenta c/ granizo fuerte'}[c])||'Condición desconocida';
+}
+function weatherIcon(c, d) {
+  if(c===0) return d?'☀️':'🌙';
+  if(c<=2) return d?'⛅':'🌤️';
+  if(c===3) return '☁️';
+  if(c<=48) return '🌫️';
+  if(c<=55) return '🌦️';
+  if(c<=65) return '🌧️';
+  if(c<=75) return '❄️';
+  if(c<=82) return '🌧️';
+  return '⛈️';
+}
+function uvInfo(u) {
+  if(u<=2) return {t:'Bajo',c:'var(--green)'};
+  if(u<=5) return {t:'Moderado',c:'var(--warm)'};
+  if(u<=7) return {t:'Alto',c:'#ffa726'};
+  if(u<=10) return {t:'Muy alto',c:'var(--red)'};
+  return {t:'Extremo',c:'#ce93d8'};
+}
+function humLabel(h) { return h<40?'Seco':h<60?'Confortable':h<75?'Húmedo':'Muy húmedo'; }
+function presLabel(p) { return p>1015?'↑ Alta — buen tiempo':p<1000?'↓ Baja — posible lluvia':'→ Normal'; }
+function timeMin(s){ const[h,m]=s.split(':').map(Number); return h*60+m; }
+function solarPct(rise,set){
+  const n=new Date(), nm=n.getHours()*60+n.getMinutes(), r=timeMin(rise), s=timeMin(set);
+  if(nm<r) return 0; if(nm>s) return 100;
+  return Math.round((nm-r)/(s-r)*100);
+}
+
+function startCountdown() {
+  if(cdInterval) clearInterval(cdInterval);
+  countdown = REFRESH;
+  const ring = document.getElementById('cd-ring');
+  const circ = 88;
+  cdInterval = setInterval(() => {
+    countdown--;
+    const pct = countdown / REFRESH;
+    ring.style.strokeDashoffset = circ*(1-pct);
+    const m=Math.floor(countdown/60), s=countdown%60;
+    document.getElementById('cd-num').textContent = m>0?`${m}m`:`${s}s`;
+    document.getElementById('next-lbl').textContent = m>0?`${m} min ${s}s`:`${s}s`;
+    if(countdown<=0) loadWeather();
+  }, 1000);
+}
+
+async function loadWeather() {
+  // Mostrar estado carga (sólo si no hay datos aún)
+  const app = document.getElementById('app');
+
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+      `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,` +
+      `wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,cloud_cover,dew_point_2m` +
+      `&daily=sunrise,sunset,uv_index_max,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum` +
+      `&timezone=America%2FArgentina%2FBuenos_Aires&forecast_days=1`;
+
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const d = await res.json();
+    const c=d.current, daily=d.daily;
+    const now=new Date();
+
+    document.getElementById('update-time').textContent =
+      now.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+    const temp=Math.round(c.temperature_2m);
+    const feels=Math.round(c.apparent_temperature);
+    const hum=Math.round(c.relative_humidity_2m);
+    const wkm=Math.round(c.wind_speed_10m);
+    const gkm=Math.round(c.wind_gusts_10m);
+    const pres=Math.round(c.surface_pressure);
+    const cloud=Math.round(c.cloud_cover);
+    const prec=c.precipitation.toFixed(1);
+    const dew=Math.round(c.dew_point_2m);
+    const wcode=c.weather_code, isDay=c.is_day;
+    const wdeg=Math.round(c.wind_direction_10m);
+    const wdir=windDirLabel(wdeg);
+    const uvmax=parseFloat(daily.uv_index_max[0]).toFixed(1);
+    const tmax=Math.round(daily.temperature_2m_max[0]);
+    const tmin=Math.round(daily.temperature_2m_min[0]);
+    const rainP=daily.precipitation_probability_max[0];
+    const precipSum=daily.precipitation_sum[0].toFixed(1);
+    const sunrise=daily.sunrise[0].split('T')[1];
+    const sunset=daily.sunset[0].split('T')[1];
+    const icon=weatherIcon(wcode,isDay);
+    const uv=uvInfo(parseFloat(uvmax));
+    const solP=solarPct(sunrise,sunset);
+
+    // Eliminar mensaje de carga y columnas viejas
+    document.getElementById('state-msg')?.remove();
+    document.querySelectorAll('.col-left,.col-center,.col-right').forEach(e=>e.remove());
+
+    // ── COLUMNA IZQUIERDA — sol arriba ──
+    const colL = document.createElement('div');
+    colL.className = 'col-left';
+    colL.innerHTML = `
+      <div class="sun-card">
+        <div class="sun-card-lbl">Luz solar — ${solP}% del día transcurrido</div>
+        <div class="sun-times">
+          <div class="sun-item">
+            <span class="sun-emoji">🌅</span>
+            <div class="sun-time">${sunrise}</div>
+            <div class="sun-sublbl">Amanecer</div>
+          </div>
+          <div class="sun-div"></div>
+          <div class="sun-item">
+            <span class="sun-emoji">🌇</span>
+            <div class="sun-time">${sunset}</div>
+            <div class="sun-sublbl">Atardecer</div>
+          </div>
+        </div>
+        <div class="sun-bar"><div class="sun-fill" style="width:${solP}%"></div></div>
+        <div class="sun-ticks"><span>${sunrise}</span><span>${sunset}</span></div>
+      </div>
+      <div class="mini-grid">
+        <div class="mini">
+          <div class="mini-lbl">Humedad</div>
+          <div class="mini-val">${hum}<span class="u"> %</span></div>
+          <div class="mini-sub">${humLabel(hum)}</div>
+          <div class="mini-bar"><div class="mini-bar-fill" style="width:${hum}%;background:${hum>70?'var(--cool)':'var(--accent)'}"></div></div>
+        </div>
+        <div class="mini">
+          <div class="mini-lbl">Punto de rocío</div>
+          <div class="mini-val">${dew}<span class="u"> °C</span></div>
+          <div class="mini-sub">${dew>18?'Bochornoso':dew>12?'Húmedo':'Confortable'}</div>
+        </div>
+        <div class="mini">
+          <div class="mini-lbl">Presión atm.</div>
+          <div class="mini-val">${pres}<span class="u"> hPa</span></div>
+          <div class="mini-sub">${presLabel(pres)}</div>
+        </div>
+        <div class="mini">
+          <div class="mini-lbl">Índice UV hoy</div>
+          <div class="mini-val" style="color:${uv.c}">${uvmax}</div>
+          <div class="mini-sub">${uv.t}</div>
+          <div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(parseFloat(uvmax)/12*100,100)}%;background:${uv.c}"></div></div>
+        </div>
+      </div>
+    `;
+
+    // ── COLUMNA CENTRO — viento arriba, temperatura abajo ──
+    const colC = document.createElement('div');
+    colC.className = 'col-center';
+    colC.innerHTML = `
+      <div class="wind-card">
+        <div class="compass">
+          <span class="compass-n">N</span>
+          <span class="compass-s">S</span>
+          <span class="compass-e">E</span>
+          <span class="compass-o">O</span>
+          <div class="wind-arrow" id="wind-arrow"></div>
+          <div class="compass-dot"></div>
+        </div>
+        <div class="wind-data">
+          <div class="wind-lbl">Viento</div>
+          <div class="wind-big">${wkm}<span class="u"> km/h</span></div>
+          <div class="wind-sub">Ráfagas hasta <span>${gkm} km/h</span></div>
+          <div class="dir-badge">${wdir} — ${wdeg}°</div>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="hero-icon-row">
+          <span class="hero-icon">${icon}</span>
+          <div class="hero-range">
+            <div class="hi">▲ ${tmax}°C</div>
+            <div class="lo">▼ ${tmin}°C</div>
+          </div>
+        </div>
+        <div class="hero-temp">${temp}<sup>°C</sup></div>
+        <div class="hero-desc">${weatherDesc(wcode)}</div>
+        <div class="hero-feels">Sensación: <span>${feels}°C</span></div>
+        <div class="pill-row">
+          <div class="pill">☁️ <strong>${cloud}%</strong> nub.</div>
+          <div class="pill">🌧️ <strong>${rainP}%</strong> lluvia</div>
+          <div class="pill">💧 <strong>${prec} mm</strong></div>
+          <div class="pill">📅 <strong>${precipSum} mm</strong> hoy</div>
+        </div>
+      </div>
+      <div class="news-card">
+        <div class="news-header">
+          <div class="news-lbl"><span class="news-live-dot"></span>Últimas noticias — Argentina</div>
+          <div class="news-timer">Tocá para abrir</div>
+        </div>
+        <div class="news-list" id="news-list"><div class="news-loading">Cargando noticias...</div></div>
+      </div>
+    `;
+
+    // ── COLUMNA DERECHA ──
+    const colR = document.createElement('div');
+    colR.className = 'col-right';
+    const rightItems = [
+      {lbl:'Temperatura máx.',val:tmax,unit:'°C',sub:'Pronóstico del día'},
+      {lbl:'Temperatura mín.',val:tmin,unit:'°C',sub:'Pronóstico del día'},
+      {lbl:'Velocidad del viento',val:wkm,unit:' km/h',sub:`Dirección ${wdir}`},
+      {lbl:'Ráfagas',val:gkm,unit:' km/h',sub:'Velocidad máxima'},
+      {lbl:'Nubosidad',val:cloud,unit:'%',sub:cloud<25?'Despejado':cloud<60?'Parcial':'Cubierto'},
+    ];
+    colR.innerHTML = rightItems.map(i=>`
+      <div class="right-card">
+        <div class="right-lbl">${i.lbl}</div>
+        <div class="right-val">${i.val}<span class="u">${i.unit}</span></div>
+        <div class="right-sub">${i.sub}</div>
+      </div>
+    `).join('');
+
+    // Insertar columnas antes del footer
+    const footer = app.querySelector('.footer');
+    app.insertBefore(colL, footer);
+    app.insertBefore(colC, footer);
+    app.insertBefore(colR, footer);
+
+    // Animar brújula
+    setTimeout(()=>{
+      const arr = document.getElementById('wind-arrow');
+      if(arr) arr.style.transform = `rotate(${wdeg}deg)`;
+    }, 150);
+
+    startCountdown();
+
+  } catch(e) {
+    document.getElementById('state-msg')?.remove();
+    const err = document.createElement('div');
+    err.className = 'state-msg';
+    err.style.color = 'var(--red)';
+    err.innerHTML = `<div class="big">⚠️</div>No se pudo conectar con Open-Meteo.<br>Verificá tu conexión. (${e.message})`;
+    const footer = app.querySelector('.footer');
+    app.insertBefore(err, footer);
+    startCountdown();
+  }
+}
+
+requestWakeLock();
+loadWeather();
+
+// ── NOTICIAS — links directos ──
+const DIARIOS = [
+  { name: 'Infobae',     url: 'https://www.infobae.com',               cat: 'Últimas noticias' },
+  { name: 'Clarín',      url: 'https://www.clarin.com/ultimo-momento', cat: 'Último momento'   },
+  { name: 'La Nación',   url: 'https://www.lanacion.com.ar',           cat: 'Portada'          },
+  { name: 'TN',          url: 'https://tn.com.ar/ultimas-noticias',    cat: 'Últimas noticias' },
+  { name: 'Ámbito',      url: 'https://www.ambito.com',                cat: 'Portada'          },
+  { name: 'Perfil',      url: 'https://www.perfil.com',                cat: 'Portada'          },
+  { name: 'Página 12',   url: 'https://www.pagina12.com.ar',           cat: 'Portada'          },
+  { name: 'Cronista',    url: 'https://www.cronista.com',              cat: 'Portada'          },
+  { name: 'Google News', url: 'https://news.google.com/topics/CAAqIQgKIhtDQkFTRGdvSUwyMHZNREd5TlRZU0FtVnpLQUFQAQ?hl=es-419&gl=AR&ceid=AR%3Aes-419', cat: 'Argentina' },
+];
+
+function renderNews() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+  list.innerHTML = DIARIOS.map(d => `
+    <a class="news-item" href="${d.url}" target="_blank" rel="noopener">
+      <span class="news-source">${d.name}</span>
+      <span class="news-title">${d.cat} <span class="news-arrow">↗</span></span>
+    </a>
+  `).join('');
+}
+
+renderNews();
+</script>
+</body>
+</html>
