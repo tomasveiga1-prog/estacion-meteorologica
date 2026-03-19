@@ -280,7 +280,8 @@
     font-family: var(--mono); font-size: 9px; color: var(--muted);
   }
   .news-timer span { color: var(--accent); }
-  .news-list { display: flex; flex-direction: column; gap: 0; flex: 1; overflow: hidden; }
+  .news-list { display: flex; flex-direction: column; gap: 0; flex: 1; overflow: hidden; min-height: 0; }
+  .news-list iframe { flex: 1; min-height: 0; border-radius: 6px; }
   .news-item {
     display: flex; align-items: center; gap: 10px;
     padding: 7px 8px; margin: 0 -8px;
@@ -617,7 +618,7 @@ async function loadWeather() {
       <div class="news-card">
         <div class="news-header">
           <div class="news-lbl"><span class="news-live-dot"></span>Últimas noticias — Argentina</div>
-          <div class="news-timer">Tocá para abrir</div>
+          <div class="news-timer">@infobae — Últimos tweets</div>
         </div>
         <div class="news-list" id="news-list"><div class="news-loading">Cargando noticias...</div></div>
       </div>
@@ -670,28 +671,31 @@ async function loadWeather() {
 requestWakeLock();
 loadWeather();
 
-// ── NOTICIAS — links directos ──
-const DIARIOS = [
-  { name: 'Infobae',     url: 'https://www.infobae.com',               cat: 'Últimas noticias' },
-  { name: 'Clarín',      url: 'https://www.clarin.com/ultimo-momento', cat: 'Último momento'   },
-  { name: 'La Nación',   url: 'https://www.lanacion.com.ar',           cat: 'Portada'          },
-  { name: 'TN',          url: 'https://tn.com.ar/ultimas-noticias',    cat: 'Últimas noticias' },
-  { name: 'Ámbito',      url: 'https://www.ambito.com',                cat: 'Portada'          },
-  { name: 'Perfil',      url: 'https://www.perfil.com',                cat: 'Portada'          },
-  { name: 'Página 12',   url: 'https://www.pagina12.com.ar',           cat: 'Portada'          },
-  { name: 'Cronista',    url: 'https://www.cronista.com',              cat: 'Portada'          },
-  { name: 'Google News', url: 'https://news.google.com/topics/CAAqIQgKIhtDQkFTRGdvSUwyMHZNREd5TlRZU0FtVnpLQUFQAQ?hl=es-419&gl=AR&ceid=AR%3Aes-419', cat: 'Argentina' },
-];
-
+// ── NOTICIAS — Twitter/X embed ──
 function renderNews() {
   const list = document.getElementById('news-list');
   if (!list) return;
-  list.innerHTML = DIARIOS.map(d => `
-    <a class="news-item" href="${d.url}" target="_blank" rel="noopener">
-      <span class="news-source">${d.name}</span>
-      <span class="news-title">${d.cat} <span class="news-arrow">↗</span></span>
+  list.innerHTML = `
+    <a class="twitter-timeline"
+       data-theme="dark"
+       data-chrome="noheader nofooter noborders transparent"
+       data-tweet-limit="7"
+       data-dnt="true"
+       data-lang="es"
+       href="https://twitter.com/infobae">
+      Cargando tweets de @infobae...
     </a>
-  `).join('');
+  `;
+  if (!document.getElementById('twitter-wjs')) {
+    const s = document.createElement('script');
+    s.id = 'twitter-wjs';
+    s.src = 'https://platform.twitter.com/widgets.js';
+    s.charset = 'utf-8';
+    s.async = true;
+    document.body.appendChild(s);
+  } else if (window.twttr && window.twttr.widgets) {
+    window.twttr.widgets.load();
+  }
 }
 
 renderNews();
