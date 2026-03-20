@@ -48,15 +48,16 @@
     z-index: 0;
   }
 
-  /* ── Layout raíz ── */
+  /* ── Layout raíz — diseñado para 1280×800, escala con JS ── */
   .app {
     position: relative; z-index: 1;
-    width: 100%; height: 100vh;
+    width: 1280px; height: 800px;
     display: grid;
-    grid-template-columns: 22vw 1fr 18vw;
+    grid-template-columns: 260px 1fr 220px;
     grid-template-rows: auto 1fr auto;
-    padding: 1.2vh 1.2vw 1vh;
-    column-gap: 1vw;
+    padding: 14px 14px 10px;
+    column-gap: 12px;
+    transform-origin: top left;
   }
 
   /* ── Header full-width ── */
@@ -110,12 +111,20 @@
 
   /* ── COLUMNA IZQUIERDA ── */
   .col-left {
-    grid-column: 1;
-    grid-row: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    grid-column: 1; grid-row: 2;
+    display: flex; flex-direction: column; gap: 10px;
   }
+  /* ── COLUMNA CENTRO ── */
+  .col-center {
+    grid-column: 2; grid-row: 2;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  /* ── COLUMNA DERECHA ── */
+  .col-right {
+    grid-column: 3; grid-row: 2;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .col-center .hero { flex-shrink: 0; }
 
   /* Hero temperatura */
   .hero {
@@ -180,14 +189,6 @@
   .mini-bar { height:2px; background:var(--border2); border-radius:1px; margin-top:6px; overflow:hidden; }
   .mini-bar-fill { height:100%; border-radius:1px; transition: width .7s ease; }
 
-  /* ── COLUMNA CENTRO ── */
-  .col-center {
-    grid-column: 2;
-    grid-row: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
 
   /* Viento */
   .wind-card {
@@ -237,7 +238,7 @@
     border-radius: var(--r); padding: 14px 16px;
     flex-shrink: 0;
   }
-  .col-center .hero { flex-shrink: 0; }
+
   .sun-card-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
   .sun-times { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
   .sun-item { flex:1; text-align:center; }
@@ -349,12 +350,6 @@
     transition: width 1s linear;
   }
 
-  /* ── COLUMNA DERECHA ── */
-  .col-right {
-    grid-column: 3;
-    grid-row: 2;
-    display: flex; flex-direction: column; gap: 10px;
-  }
 
   .right-card {
     background: var(--surface); border: 1px solid var(--border);
@@ -368,8 +363,7 @@
 
   /* ── FOOTER ── */
   .footer {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    grid-column: 1 / -1; grid-row: 3;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -390,7 +384,6 @@
   .footer-right { font-family:var(--mono); font-size:10px; color:var(--muted); text-align:right; }
   .footer-right strong { color:var(--accent); font-weight:400; }
 
-  /* Estado carga/error */
   .state-msg {
     grid-column:1/-1; grid-row:2;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -562,68 +555,39 @@ async function loadWeather() {
     const uv=uvInfo(parseFloat(uvmax));
     const solP=solarPct(sunrise,sunset);
 
-    // Eliminar mensaje de carga y columnas viejas
     document.getElementById('state-msg')?.remove();
     document.querySelectorAll('.col-left,.col-center,.col-right').forEach(e=>e.remove());
 
-    // ── COLUMNA IZQUIERDA — sol arriba ──
+    // ── COLUMNA IZQUIERDA — sol + métricas ──
     const colL = document.createElement('div');
     colL.className = 'col-left';
     colL.innerHTML = `
       <div class="sun-card">
         <div class="sun-card-lbl">Luz solar — ${solP}% del día transcurrido</div>
         <div class="sun-times">
-          <div class="sun-item">
-            <span class="sun-emoji">🌅</span>
-            <div class="sun-time">${sunrise}</div>
-            <div class="sun-sublbl">Amanecer</div>
-          </div>
+          <div class="sun-item"><span class="sun-emoji">🌅</span><div class="sun-time">${sunrise}</div><div class="sun-sublbl">Amanecer</div></div>
           <div class="sun-div"></div>
-          <div class="sun-item">
-            <span class="sun-emoji">🌇</span>
-            <div class="sun-time">${sunset}</div>
-            <div class="sun-sublbl">Atardecer</div>
-          </div>
+          <div class="sun-item"><span class="sun-emoji">🌇</span><div class="sun-time">${sunset}</div><div class="sun-sublbl">Atardecer</div></div>
         </div>
         <div class="sun-bar"><div class="sun-fill" style="width:${solP}%"></div></div>
         <div class="sun-ticks"><span>${sunrise}</span><span>${sunset}</span></div>
       </div>
       <div class="mini-grid">
-        <div class="mini">
-          <div class="mini-lbl">Humedad</div>
-          <div class="mini-val">${hum}<span class="u"> %</span></div>
-          <div class="mini-sub">${humLabel(hum)}</div>
-          <div class="mini-bar"><div class="mini-bar-fill" style="width:${hum}%;background:${hum>70?'var(--cool)':'var(--accent)'}"></div></div>
-        </div>
-        <div class="mini">
-          <div class="mini-lbl">Punto de rocío</div>
-          <div class="mini-val">${dew}<span class="u"> °C</span></div>
-          <div class="mini-sub">${dew>18?'Bochornoso':dew>12?'Húmedo':'Confortable'}</div>
-        </div>
-        <div class="mini">
-          <div class="mini-lbl">Presión atm.</div>
-          <div class="mini-val">${pres}<span class="u"> hPa</span></div>
-          <div class="mini-sub">${presLabel(pres)}</div>
-        </div>
-        <div class="mini">
-          <div class="mini-lbl">Índice UV hoy</div>
-          <div class="mini-val" style="color:${uv.c}">${uvmax}</div>
-          <div class="mini-sub">${uv.t}</div>
-          <div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(parseFloat(uvmax)/12*100,100)}%;background:${uv.c}"></div></div>
-        </div>
+        <div class="mini"><div class="mini-lbl">Humedad</div><div class="mini-val">${hum}<span class="u"> %</span></div><div class="mini-sub">${humLabel(hum)}</div><div class="mini-bar"><div class="mini-bar-fill" style="width:${hum}%;background:${hum>70?'var(--cool)':'var(--accent)'}"></div></div></div>
+        <div class="mini"><div class="mini-lbl">Punto de rocío</div><div class="mini-val">${dew}<span class="u"> °C</span></div><div class="mini-sub">${dew>18?'Bochornoso':dew>12?'Húmedo':'Confortable'}</div></div>
+        <div class="mini"><div class="mini-lbl">Presión atm.</div><div class="mini-val">${pres}<span class="u"> hPa</span></div><div class="mini-sub">${presLabel(pres)}</div></div>
+        <div class="mini"><div class="mini-lbl">Índice UV hoy</div><div class="mini-val" style="color:${uv.c}">${uvmax}</div><div class="mini-sub">${uv.t}</div><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(parseFloat(uvmax)/12*100,100)}%;background:${uv.c}"></div></div></div>
       </div>
     `;
 
-    // ── COLUMNA CENTRO — viento arriba, temperatura abajo ──
+    // ── COLUMNA CENTRO — viento + temperatura + reloj ──
     const colC = document.createElement('div');
     colC.className = 'col-center';
     colC.innerHTML = `
       <div class="wind-card">
         <div class="compass">
-          <span class="compass-n">N</span>
-          <span class="compass-s">S</span>
-          <span class="compass-e">E</span>
-          <span class="compass-o">O</span>
+          <span class="compass-n">N</span><span class="compass-s">S</span>
+          <span class="compass-e">E</span><span class="compass-o">O</span>
           <div class="wind-arrow" id="wind-arrow"></div>
           <div class="compass-dot"></div>
         </div>
@@ -637,10 +601,7 @@ async function loadWeather() {
       <div class="hero">
         <div class="hero-icon-row">
           <span class="hero-icon">${icon}</span>
-          <div class="hero-range">
-            <div class="hi">▲ ${tmax}°C</div>
-            <div class="lo">▼ ${tmin}°C</div>
-          </div>
+          <div class="hero-range"><div class="hi">▲ ${tmax}°C</div><div class="lo">▼ ${tmin}°C</div></div>
         </div>
         <div class="hero-temp">${temp}<sup>°C</sup></div>
         <div class="hero-desc">${weatherDesc(wcode)}</div>
@@ -679,13 +640,11 @@ async function loadWeather() {
       </div>
     `).join('');
 
-    // Insertar columnas antes del footer
     const footer = app.querySelector('.footer');
     app.insertBefore(colL, footer);
     app.insertBefore(colC, footer);
     app.insertBefore(colR, footer);
 
-    // Animar brújula
     setTimeout(()=>{
       const arr = document.getElementById('wind-arrow');
       if(arr) arr.style.transform = `rotate(${wdeg}deg)`;
@@ -706,6 +665,30 @@ async function loadWeather() {
   }
 }
 
+// ── ESCALADO AUTOMÁTICO ──
+// El layout está diseñado para 1280×800.
+// Esta función lo escala proporcionalmente a cualquier pantalla.
+const BASE_W = 1280;
+const BASE_H = 800;
+
+function scaleApp() {
+  const app = document.getElementById('app');
+  const scaleX = window.innerWidth  / BASE_W;
+  const scaleY = window.innerHeight / BASE_H;
+  const scale  = Math.min(scaleX, scaleY);
+  app.style.transform = `scale(${scale})`;
+  app.style.transformOrigin = 'top left';
+  // Centrar si hay espacio sobrante
+  const offsetX = (window.innerWidth  - BASE_W * scale) / 2;
+  const offsetY = (window.innerHeight - BASE_H * scale) / 2;
+  app.style.left = offsetX + 'px';
+  app.style.top  = offsetY + 'px';
+  app.style.position = 'absolute';
+}
+
+scaleApp();
+window.addEventListener('resize', scaleApp);
+
 requestWakeLock();
 loadWeather();
 
@@ -724,15 +707,15 @@ function renderNews() {
       <div class="clock-date" id="clock-date"></div>
       <div class="clock-seg">
         <div class="clock-seg-item">
-          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-h" style="width:0%"></div></div>
+          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-h"></div></div>
           <div class="clock-seg-val">hora</div>
         </div>
         <div class="clock-seg-item">
-          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-m" style="width:0%"></div></div>
+          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-m"></div></div>
           <div class="clock-seg-val">min</div>
         </div>
         <div class="clock-seg-item">
-          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-s" style="width:0%"></div></div>
+          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-s"></div></div>
           <div class="clock-seg-val">seg</div>
         </div>
       </div>
@@ -740,28 +723,20 @@ function renderNews() {
 
   function tick() {
     const now = new Date();
-    const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
-    const hh = String(h).padStart(2,'0');
-    const mm = String(m).padStart(2,'0');
-    const ss = String(s).padStart(2,'0');
-
-    const tEl = document.getElementById('clock-time');
-    const dEl = document.getElementById('clock-date');
-    const wEl = document.getElementById('clock-dow');
-    const bH  = document.getElementById('bar-h');
-    const bM  = document.getElementById('bar-m');
-    const bS  = document.getElementById('bar-s');
-    if (!tEl) return;
-
+    const h=now.getHours(), m=now.getMinutes(), s=now.getSeconds();
+    const hh=String(h).padStart(2,'0'), mm=String(m).padStart(2,'0'), ss=String(s).padStart(2,'0');
+    const tEl=document.getElementById('clock-time');
+    if(!tEl) return;
     tEl.innerHTML = `${hh}<span class="clock-colon">:</span>${mm}<span class="clock-secs"> ${ss}</span>`;
-    dEl.innerHTML = `<span>${DAYS[now.getDay()]}</span> · ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
-    wEl.textContent = 'Don Torcuato · Buenos Aires';
-
-    if (bH) bH.style.width = (h / 23 * 100) + '%';
-    if (bM) bM.style.width = (m / 59 * 100) + '%';
-    if (bS) bS.style.width = (s / 59 * 100) + '%';
+    document.getElementById('clock-date').innerHTML = `<span>${DAYS[now.getDay()]}</span> · ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+    document.getElementById('clock-dow').textContent = 'Don Torcuato · Buenos Aires';
+    const bH=document.getElementById('bar-h');
+    const bM=document.getElementById('bar-m');
+    const bS=document.getElementById('bar-s');
+    if(bH) bH.style.width=(h/23*100)+'%';
+    if(bM) bM.style.width=(m/59*100)+'%';
+    if(bS) bS.style.width=(s/59*100)+'%';
   }
-
   tick();
   setInterval(tick, 1000);
 }
