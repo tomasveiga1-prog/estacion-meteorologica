@@ -592,19 +592,12 @@ async function loadWeather() {
     const colC = document.createElement('div');
     colC.className = 'col-center';
     colC.innerHTML = `
-      <div class="wind-card">
-        <div class="compass">
-          <span class="compass-n">N</span><span class="compass-s">S</span>
-          <span class="compass-e">E</span><span class="compass-o">O</span>
-          <div class="wind-arrow" id="wind-arrow"></div>
-          <div class="compass-dot"></div>
+      <div class="news-card">
+        <div class="news-header">
+          <div class="news-lbl"><span class="news-live-dot"></span>Fecha y hora</div>
+          <div class="news-timer"></div>
         </div>
-        <div class="wind-data">
-          <div class="wind-lbl">Viento</div>
-          <div class="wind-big">${wkm}<span class="u"> km/h</span></div>
-          <div class="wind-sub">Ráfagas hasta <span>${gkm} km/h</span></div>
-          <div class="dir-badge">${wdir} — ${wdeg}°</div>
-        </div>
+        <div class="news-list" id="news-list"></div>
       </div>
       <div class="hero">
         <div class="hero-icon-row">
@@ -621,12 +614,19 @@ async function loadWeather() {
           <div class="pill">📅 <strong>${precipSum} mm</strong> hoy</div>
         </div>
       </div>
-      <div class="news-card">
-        <div class="news-header">
-          <div class="news-lbl"><span class="news-live-dot"></span>Fecha y hora</div>
-          <div class="news-timer"></div>
+      <div class="wind-card">
+        <div class="compass">
+          <span class="compass-n">N</span><span class="compass-s">S</span>
+          <span class="compass-e">E</span><span class="compass-o">O</span>
+          <div class="wind-arrow" id="wind-arrow"></div>
+          <div class="compass-dot"></div>
         </div>
-        <div class="news-list" id="news-list"></div>
+        <div class="wind-data">
+          <div class="wind-lbl">Viento</div>
+          <div class="wind-big">${wkm}<span class="u"> km/h</span></div>
+          <div class="wind-sub">Ráfagas hasta <span>${gkm} km/h</span></div>
+          <div class="dir-badge">${wdir} — ${wdeg}°</div>
+        </div>
       </div>
     `;
 
