@@ -274,33 +274,79 @@
     animation: blink 2s ease-in-out infinite;
   }
   .news-timer { font-family: var(--mono); font-size: 9px; color: var(--muted); }
-  .news-list { display: flex; flex-direction: column; gap: 0; flex: 1; overflow: hidden; min-height: 0; }
-  .news-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 8px; margin: 0 -8px;
-    border-bottom: 1px solid var(--border);
-    border-radius: 6px;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background .15s;
+  .news-list { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  .clock-wrap {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px; padding: 8px;
+    background: var(--surface);
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    position: relative; overflow: hidden;
   }
-  .news-item:last-child { border-bottom: none; }
-  .news-item:hover, .news-item:active { background: var(--surface2); }
-  .news-source {
-    font-family: var(--mono); font-size: 10px;
-    color: var(--accent); white-space: nowrap;
-    min-width: 72px; letter-spacing: .03em; font-weight: 500;
+  /* scanline effect */
+  .clock-wrap::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,.08) 2px,
+      rgba(0,0,0,.08) 4px
+    );
+    pointer-events: none; z-index: 1;
   }
-  .news-title {
-    font-size: 12px; color: var(--text); line-height: 1.3; flex: 1;
+  .clock-dow {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; letter-spacing: .25em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
-  .news-loading {
-    font-family: var(--mono); font-size: 11px;
-    color: var(--muted); text-align: center; padding: 12px 0;
+  .clock-time {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 64px; line-height: 1;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 18px rgba(79,195,247,.5), 0 0 40px rgba(79,195,247,.2);
+    position: relative; z-index: 2;
   }
-  .news-error {
-    font-family: var(--mono); font-size: 10px;
-    color: var(--red); text-align: center; padding: 8px 0;
+  .clock-secs {
+    font-size: 36px; letter-spacing: 2px;
+    color: rgba(79,195,247,.55);
+    text-shadow: none;
+  }
+  .clock-colon { animation: colonBlink 1s step-end infinite; }
+  @keyframes colonBlink { 0%,100%{opacity:1} 50%{opacity:.15} }
+  .clock-date {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; letter-spacing: .18em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  .clock-date span { color: var(--text); }
+  .clock-seg {
+    display: flex; gap: 12px; align-items: center;
+  }
+  .clock-seg-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .clock-seg-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; letter-spacing: .12em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  .clock-bar-wrap {
+    width: 40px; height: 3px;
+    background: var(--border2); border-radius: 2px; overflow: hidden;
+  }
+  .clock-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    transition: width 1s linear;
   }
 
   /* ── COLUMNA DERECHA ── */
@@ -608,8 +654,8 @@ async function loadWeather() {
       </div>
       <div class="news-card">
         <div class="news-header">
-          <div class="news-lbl"><span class="news-live-dot"></span>Acceso rápido — Diarios AR</div>
-          <div class="news-timer">Tocá para abrir la nota</div>
+          <div class="news-lbl"><span class="news-live-dot"></span>Fecha y hora</div>
+          <div class="news-timer"></div>
         </div>
         <div class="news-list" id="news-list"></div>
       </div>
@@ -663,28 +709,61 @@ async function loadWeather() {
 requestWakeLock();
 loadWeather();
 
-// ── NOTICIAS — links directos ──
-const DIARIOS = [
-  { name: 'Infobae',     url: 'https://www.infobae.com',               cat: 'Últimas noticias' },
-  { name: 'Clarín',      url: 'https://www.clarin.com/ultimo-momento', cat: 'Último momento'   },
-  { name: 'La Nación',   url: 'https://www.lanacion.com.ar',           cat: 'Portada'          },
-  { name: 'TN',          url: 'https://tn.com.ar/ultimas-noticias',    cat: 'Últimas noticias' },
-  { name: 'Ámbito',      url: 'https://www.ambito.com',                cat: 'Portada'          },
-  { name: 'Perfil',      url: 'https://www.perfil.com',                cat: 'Portada'          },
-  { name: 'Página 12',   url: 'https://www.pagina12.com.ar',           cat: 'Portada'          },
-  { name: 'Cronista',    url: 'https://www.cronista.com',              cat: 'Portada'          },
-  { name: 'Google News', url: 'https://news.google.com/topics/CAAqIQgKIhtDQkFTRGdvSUwyMHZNREd5TlRZU0FtVnpLQUFQAQ?hl=es-419&gl=AR&ceid=AR%3Aes-419', cat: 'Argentina' },
-];
+// ── RELOJ DIGITAL ──
+const DAYS   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 function renderNews() {
   const list = document.getElementById('news-list');
   if (!list) return;
-  list.innerHTML = DIARIOS.map(d => `
-    <a class="news-item" href="${d.url}" target="_blank" rel="noopener">
-      <span class="news-source">${d.name}</span>
-      <span class="news-title">${d.cat} <span class="news-arrow">↗</span></span>
-    </a>
-  `).join('');
+
+  list.innerHTML = `
+    <div class="clock-wrap">
+      <div class="clock-dow" id="clock-dow"></div>
+      <div class="clock-time" id="clock-time"></div>
+      <div class="clock-date" id="clock-date"></div>
+      <div class="clock-seg">
+        <div class="clock-seg-item">
+          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-h" style="width:0%"></div></div>
+          <div class="clock-seg-val">hora</div>
+        </div>
+        <div class="clock-seg-item">
+          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-m" style="width:0%"></div></div>
+          <div class="clock-seg-val">min</div>
+        </div>
+        <div class="clock-seg-item">
+          <div class="clock-bar-wrap"><div class="clock-bar-fill" id="bar-s" style="width:0%"></div></div>
+          <div class="clock-seg-val">seg</div>
+        </div>
+      </div>
+    </div>`;
+
+  function tick() {
+    const now = new Date();
+    const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+    const hh = String(h).padStart(2,'0');
+    const mm = String(m).padStart(2,'0');
+    const ss = String(s).padStart(2,'0');
+
+    const tEl = document.getElementById('clock-time');
+    const dEl = document.getElementById('clock-date');
+    const wEl = document.getElementById('clock-dow');
+    const bH  = document.getElementById('bar-h');
+    const bM  = document.getElementById('bar-m');
+    const bS  = document.getElementById('bar-s');
+    if (!tEl) return;
+
+    tEl.innerHTML = `${hh}<span class="clock-colon">:</span>${mm}<span class="clock-secs"> ${ss}</span>`;
+    dEl.innerHTML = `<span>${DAYS[now.getDay()]}</span> · ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+    wEl.textContent = 'Don Torcuato · Buenos Aires';
+
+    if (bH) bH.style.width = (h / 23 * 100) + '%';
+    if (bM) bM.style.width = (m / 59 * 100) + '%';
+    if (bS) bS.style.width = (s / 59 * 100) + '%';
+  }
+
+  tick();
+  setInterval(tick, 1000);
 }
 </script>
 </body>
