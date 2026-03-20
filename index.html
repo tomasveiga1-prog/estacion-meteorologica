@@ -673,10 +673,11 @@ async function loadWeather() {
   }
 }
 
-// ── ESCALADO AUTOMÁTICO + ZOOM PINCH ──
+// ── ESCALADO AUTOMÁTICO + ZOOM + PAN ──
 const BASE_W = 1280;
 const BASE_H = 800;
 let userZoom = 1.0;
+let panX = 0, panY = 0;
 
 function applyScale() {
   const app = document.getElementById('app');
@@ -684,27 +685,54 @@ function applyScale() {
   const fitY = window.innerHeight / BASE_H;
   const fit  = Math.min(fitX, fitY);
   const scale = fit * userZoom;
+  const scaledW = BASE_W * scale;
+  const scaledH = BASE_H * scale;
+
+  // Centrar cuando cabe en pantalla, permitir pan cuando es más grande
+  const baseX = (window.innerWidth  - scaledW) / 2;
+  const baseY = (window.innerHeight - scaledH) / 2;
+
+  // Limitar el pan para no alejarse demasiado del contenido
+  const maxPanX = Math.max(0, (scaledW  - window.innerWidth)  / 2 + 40);
+  const maxPanY = Math.max(0, (scaledH - window.innerHeight) / 2 + 40);
+  panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+  panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+
+  app.style.position = 'absolute';
   app.style.transform = `scale(${scale})`;
   app.style.transformOrigin = 'top left';
-  app.style.position = 'absolute';
-  const offsetX = (window.innerWidth  - BASE_W * scale) / 2;
-  const offsetY = (window.innerHeight - BASE_H * scale) / 2;
-  app.style.left = Math.max(0, offsetX) + 'px';
-  app.style.top  = Math.max(0, offsetY) + 'px';
+  app.style.left = (baseX + panX) + 'px';
+  app.style.top  = (baseY + panY) + 'px';
 }
 
 function resetZoom() {
   userZoom = 1.0;
+  panX = 0;
+  panY = 0;
   applyScale();
 }
 
-// Pinch-to-zoom
-let lastDist = null;
+// ── TOUCH: pinch zoom + 1 dedo pan ──
+let lastDist  = null;
+let lastMidX  = null, lastMidY = null;
+let panStartX = null, panStartY = null;
+let panOriginX = 0, panOriginY = 0;
+let isPinching = false;
+
 document.addEventListener('touchstart', e => {
   if (e.touches.length === 2) {
+    isPinching = true;
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     lastDist = Math.hypot(dx, dy);
+    lastMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    lastMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+  } else if (e.touches.length === 1 && userZoom > 1.05) {
+    // Pan con 1 dedo solo cuando hay zoom aplicado
+    panStartX = e.touches[0].clientX;
+    panStartY = e.touches[0].clientY;
+    panOriginX = panX;
+    panOriginY = panY;
   }
 }, {passive:true});
 
@@ -716,20 +744,59 @@ document.addEventListener('touchmove', e => {
     userZoom = Math.min(3, Math.max(0.4, userZoom * (dist / lastDist)));
     lastDist = dist;
     applyScale();
+  } else if (e.touches.length === 1 && panStartX !== null && userZoom > 1.05) {
+    panX = panOriginX + (e.touches[0].clientX - panStartX);
+    panY = panOriginY + (e.touches[0].clientY - panStartY);
+    applyScale();
   }
 }, {passive:true});
 
-document.addEventListener('touchend', () => { lastDist = null; });
+document.addEventListener('touchend', e => {
+  if (e.touches.length < 2) {
+    lastDist = null;
+    isPinching = false;
+  }
+  if (e.touches.length === 0) {
+    panStartX = null;
+    panStartY = null;
+  }
+});
 
-// Scroll wheel zoom en desktop
+// ── DESKTOP: rueda zoom + arrastrar con mouse ──
 document.addEventListener('wheel', e => {
   e.preventDefault();
-  userZoom = Math.min(3, Math.max(0.4, userZoom * (e.deltaY < 0 ? 1.05 : 0.95)));
+  userZoom = Math.min(3, Math.max(0.4, userZoom * (e.deltaY < 0 ? 1.08 : 0.93)));
   applyScale();
 }, {passive:false});
 
+let mouseDown = false;
+let mousePanStartX, mousePanStartY, mousePanOriginX, mousePanOriginY;
+
+document.addEventListener('mousedown', e => {
+  if (userZoom > 1.05) {
+    mouseDown = true;
+    mousePanStartX  = e.clientX;
+    mousePanStartY  = e.clientY;
+    mousePanOriginX = panX;
+    mousePanOriginY = panY;
+    document.body.style.cursor = 'grabbing';
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  if (!mouseDown) return;
+  panX = mousePanOriginX + (e.clientX - mousePanStartX);
+  panY = mousePanOriginY + (e.clientY - mousePanStartY);
+  applyScale();
+});
+
+document.addEventListener('mouseup', () => {
+  mouseDown = false;
+  document.body.style.cursor = '';
+});
+
 applyScale();
-window.addEventListener('resize', applyScale);
+window.addEventListener('resize', () => { panX = 0; panY = 0; applyScale(); });
 
 requestWakeLock();
 loadWeather();
